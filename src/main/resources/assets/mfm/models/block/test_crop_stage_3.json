@@ -1,0 +1,6 @@
+{
+  "parent": "block/crop",
+  "textures": {
+    "crop": "mfm:blocks/test_crop_stage_0"
+  }
+}
