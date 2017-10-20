@@ -66,6 +66,9 @@ public class TileEntityLargerChest extends TileEntityInventoryConfigurableBase {
 		if(this.getSideState(facing) == EnumSideState.AUTO_OUTPUT) {
 			return teInventoryInput;
 		}
+		if(this.getSideState(facing) == EnumSideState.AUTO_INPUT) {
+			return teInventoryInput;
+		}
 		return teInventory;
 	}
 	

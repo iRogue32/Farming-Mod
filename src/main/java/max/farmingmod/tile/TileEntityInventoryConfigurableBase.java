@@ -12,6 +12,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraftforge.items.wrapper.CombinedInvWrapper;
 
 public class TileEntityInventoryConfigurableBase extends TileEntityCustomBase {
 	
@@ -21,7 +22,8 @@ public class TileEntityInventoryConfigurableBase extends TileEntityCustomBase {
 	protected HashMap<EnumFacing, EnumSideState> sideStateMap = new HashMap<>(6);
 	public enum EnumSideState {
 		DEFAULT,
-		AUTO_OUTPUT
+		AUTO_OUTPUT,
+		AUTO_INPUT
 	};
 	
 	public TileEntityInventoryConfigurableBase(int inputSlots, int outputSlots) {
@@ -50,6 +52,7 @@ public class TileEntityInventoryConfigurableBase extends TileEntityCustomBase {
 		super.updateEntity();
 		if(!this.world.isRemote) {
 			this.autoOutput();
+			this.autoInput();
 		}
 	}
 	
@@ -77,6 +80,26 @@ public class TileEntityInventoryConfigurableBase extends TileEntityCustomBase {
 			}
 		}
 	}
+	
+	protected void autoInput() {
+		for(EnumFacing facing : EnumFacing.VALUES) {
+			if(this.getSideState(facing) == EnumSideState.AUTO_INPUT) {
+				ItemStackHandlerCustom inventory = (ItemStackHandlerCustom) this.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, facing);
+				TileEntity targetEntity = this.world.getTileEntity(this.pos.offset(facing));
+				if(targetEntity != null && targetEntity.hasCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, facing.getOpposite())) {
+					IItemHandler targetInventory = targetEntity.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, facing.getOpposite());
+					for(int i = 0; i < targetInventory.getSlots(); ++i) {
+						ItemStack initialStack = targetInventory.getStackInSlot(i).copy();
+						int itemsToInput = 4 <= initialStack.getCount() ? 4 : initialStack.getCount();
+						initialStack.setCount(itemsToInput);
+						ItemStack itemsReceived = ItemHandlerHelper.insertItemStacked(inventory, initialStack, false);
+						targetInventory.getStackInSlot(i).setCount(targetInventory.getStackInSlot(i).getCount() - (itemsToInput - itemsReceived.getCount()));
+					}
+					
+				}
+			}
+		}
+	}
 
 	protected boolean isItemValidForSlot(int slot, ItemStack stack) {
 		return true;
@@ -95,6 +118,9 @@ public class TileEntityInventoryConfigurableBase extends TileEntityCustomBase {
 	
 	public void changeSideState(EnumFacing facing) {
 		if(this.sideStateMap.get(facing) == EnumSideState.DEFAULT) {
+			this.sideStateMap.put(facing, EnumSideState.AUTO_INPUT);
+		}
+		else if(this.sideStateMap.get(facing) == EnumSideState.AUTO_INPUT) {
 			this.sideStateMap.put(facing, EnumSideState.AUTO_OUTPUT);
 		}
 		else if(this.sideStateMap.get(facing) == EnumSideState.AUTO_OUTPUT) {
@@ -125,6 +151,9 @@ public class TileEntityInventoryConfigurableBase extends TileEntityCustomBase {
 	public IItemHandler getItemHandler(EnumFacing facing) {
 		if(this.getSideState(facing) == EnumSideState.AUTO_OUTPUT) {
 			return teInventoryOutput;
+		}
+		else if(this.getSideState(facing) == EnumSideState.AUTO_INPUT) {
+			return teInventoryInput;
 		}
 		return teInventory;
 	}
